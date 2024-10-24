@@ -222,30 +222,58 @@ public class BinaryXmlParser {
         }
     }
 
+//    private Attribute readAttribute() {
+//        int nsRef = buffer.getInt();
+//        int nameRef = buffer.getInt();
+//        Attribute attribute = new Attribute();
+//        if (nsRef > 0) {
+//            attribute.setNamespace(stringPool.get(nsRef));
+//        }
+//
+//        attribute.setName(stringPool.get(nameRef));
+//        if (attribute.getName().isEmpty() && resourceMap != null && nameRef < resourceMap.length) {
+//            // some processed apk file make the string pool value empty, if it is a xmlmap attr.
+//            attribute.setName(resourceMap[nameRef]);
+//            //TODO: how to get the namespace of attribute
+//        }
+//
+//        int rawValueRef = buffer.getInt();
+//        if (rawValueRef > 0) {
+//            attribute.setRawValue(stringPool.get(rawValueRef));
+//        }
+//        ResourceValue resValue = ParseUtils.readResValue(buffer, stringPool);
+//        attribute.setTypedValue(resValue);
+//
+//        return attribute;
+//    }
+    
     private Attribute readAttribute() {
-        int nsRef = buffer.getInt();
-        int nameRef = buffer.getInt();
-        Attribute attribute = new Attribute();
-        if (nsRef > 0) {
-            attribute.setNamespace(stringPool.get(nsRef));
-        }
-
-        attribute.setName(stringPool.get(nameRef));
-        if (attribute.getName().isEmpty() && resourceMap != null && nameRef < resourceMap.length) {
+    	
+    	final int namespaceRef = this.buffer.getInt();
+        final int nameRef = this.buffer.getInt();
+        String name = this.stringPool.get(nameRef);
+        if (name.isEmpty() && this.resourceMap != null && nameRef < this.resourceMap.length) {
             // some processed apk file make the string pool value empty, if it is a xmlmap attr.
-            attribute.setName(resourceMap[nameRef]);
-            //TODO: how to get the namespace of attribute
+            name = this.resourceMap[nameRef];
         }
-
-        int rawValueRef = buffer.getInt();
-        if (rawValueRef > 0) {
-            attribute.setRawValue(stringPool.get(rawValueRef));
+        String namespace = namespaceRef > 0 ? this.stringPool.get(namespaceRef) : null;
+        if (namespace == null || namespace.isEmpty() || "http://schemas.android.com/apk/res/android".equals(namespace)) {
+            //TODO parse namespaces better
+            //workaround for a weird case that there is no namespace found: https://github.com/hsiafan/apk-parser/issues/122
+            // Log.d("AppLog", "Got a weird namespace, so setting as empty (namespace isn't supposed to be a URL): " + attribute.getName());
+            namespace = "android";
         }
-        ResourceValue resValue = ParseUtils.readResValue(buffer, stringPool);
+        final int rawValueRef = this.buffer.getInt();
+        final String rawValue = rawValueRef > 0 ? this.stringPool.get(rawValueRef) : null;
+        final ResourceValue resValue = ParseUtils.readResValue(this.buffer, this.stringPool);
+        Attribute attribute = new Attribute();
+        attribute.setName(name);
+        attribute.setNamespace(namespace);
+        attribute.setRawValue(rawValue);
         attribute.setTypedValue(resValue);
-
         return attribute;
     }
+    
 
     private XmlNamespaceStartTag readXmlNamespaceStartTag() {
         int prefixRef = buffer.getInt();
